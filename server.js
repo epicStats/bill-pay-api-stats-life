@@ -178,7 +178,7 @@ app.post('/api/merchant/payment', authenticate, verifyHash, async (req, res) => 
     }
 
     const bill                = rows[0];
-    const merchantReferenceId = `IMART-${Date.now()}`;
+    const merchantReferenceId = `STATS-${Date.now()}`;
 
     // Record the payment
     await db.execute(
