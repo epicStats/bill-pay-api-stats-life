@@ -7,6 +7,17 @@ const SECRET_KEY = 'deos_CsIeYePAIbiaknmhlCBSOkDAgIk8-Tst4HeJDhOLYU44eyekWT5X-rN
 
 app.use(express.json());
 
+// ── DB Connection ─────────────────────────────────────────────────────────────
+const db = mysql.createPool({
+  host:     'mysql.railway.internalT',      
+  port:      3306,       
+  user:     'root',      
+  password: 'IxZsgjlZdisXUCYSQkDMrzGWdQxFHqGr',  
+  database: 'railway',  
+  waitForConnections: true,
+  connectionLimit:    10,
+});
+
 // ── Hash Generator ────────────────────────────────────────────────────────────
 function generateHash(data, secretKey) {
   const json        = JSON.stringify(data);
@@ -89,36 +100,111 @@ function verifyHash(req, res, next) {
   next();
 }
 
+// ── Log Request ───────────────────────────────────────────────────────────────
+async function logRequest(endpoint, userId, billIdentifier, requestBody, response, statusCode) {
+  try {
+    await db.execute(
+      `INSERT INTO request_logs (endpoint, user_id, bill_identifier, request_body, response, status_code)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [endpoint, userId, billIdentifier, JSON.stringify(requestBody), JSON.stringify(response), statusCode]
+    );
+  } catch (err) {
+    console.error('[Log Error]', err.message);
+  }
+}
+
 // ── Name Lookup Endpoint ──────────────────────────────────────────────────────
-app.post('/api/merchant/name-lookup', authenticate, verifyHash, (req, res) => {
+app.post('/api/merchant/name-lookup', authenticate, verifyHash, async (req, res) => {
   const { BillIdentifier } = req.body.Data;
 
-  console.log(`[Name Lookup] BillIdentifier: ${BillIdentifier} | User: ${req.claims.userId}`);
+  try {
+    // Query DB for bill and customer
+    const [rows] = await db.execute(
+      `SELECT c.name, b.amount, b.bill_type, b.bill_identifier, b.status
+       FROM bills b
+       JOIN customers c ON c.id = b.customer_id
+       WHERE b.bill_identifier = ?
+       LIMIT 1`,
+      [BillIdentifier]
+    );
 
-  // Hardcoded dummy data — replace with DB query later
-  return res.status(200).json({
-    Name:            'John Doe',
-    BillAmount:      150,
-    BillIdentifier:  BillIdentifier,
-    Status:          'Success',
-    Message:         'Name found for the provided BillIdentifier.',
-    StatusCode:      0,
-  });
+    if (rows.length === 0) {
+      const response = { Status: 'Failed', StatusCode: 1, Message: 'Bill not found for the provided BillIdentifier.' };
+      await logRequest('/api/merchant/name-lookup', req.claims.userId, BillIdentifier, req.body, response, 404);
+      return res.status(404).json(response);
+    }
+
+    const bill = rows[0];
+
+    const response = {
+      Name:           bill.name,
+      BillAmount:     parseFloat(bill.amount),
+      BillIdentifier: bill.bill_identifier,
+      Status:         'Success',
+      Message:        'Name found for the provided BillIdentifier.',
+      StatusCode:     0,
+    };
+
+    await logRequest('/api/merchant/name-lookup', req.claims.userId, BillIdentifier, req.body, response, 200);
+    return res.status(200).json(response);
+
+  } catch (err) {
+    console.error('[Name Lookup Error]', err.message);
+    const response = { Status: 'Failed', StatusCode: 1, Message: 'Internal server error' };
+    await logRequest('/api/merchant/name-lookup', req.claims.userId, BillIdentifier, req.body, response, 500);
+    return res.status(500).json(response);
+  }
 });
 
 // ── Payment Endpoint ──────────────────────────────────────────────────────────
-app.post('/api/merchant/payment', authenticate, verifyHash, (req, res) => {
-  const { BillIdentifier, Amount, FspReferenceId, PgReferenceId } = req.body.Data;
+app.post('/api/merchant/payment', authenticate, verifyHash, async (req, res) => {
+  const { BillIdentifier, Amount, FspReferenceId, PgReferenceId, FspCode, PaymentDesc } = req.body.Data;
 
-  console.log(`[Payment] BillIdentifier: ${BillIdentifier} | Amount: ${Amount} | User: ${req.claims.userId}`);
+  try {
+    // Find the bill
+    const [rows] = await db.execute(
+      `SELECT b.id, b.amount, b.status FROM bills b WHERE b.bill_identifier = ? LIMIT 1`,
+      [BillIdentifier]
+    );
 
-  // Hardcoded dummy response — replace with actual payment logic later
-  return res.status(200).json({
-    MerchantReferenceId: `IMART-${Date.now()}`,
-    Status:              'Success',
-    StatusCode:          0,
-    Message:             'Payment successful.',
-  });
+    if (rows.length === 0) {
+      const response = { Status: 'Failed', StatusCode: 1, Message: 'Bill not found.' };
+      await logRequest('/api/merchant/payment', req.claims.userId, BillIdentifier, req.body, response, 404);
+      return res.status(404).json(response);
+    }
+
+    const bill                = rows[0];
+    const merchantReferenceId = `IMART-${Date.now()}`;
+
+    // Record the payment
+    await db.execute(
+      `INSERT INTO payments (bill_id, fsp_reference_id, pg_reference_id, merchant_reference_id, fsp_code, amount, payment_desc, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'success')`,
+      [bill.id, FspReferenceId, PgReferenceId, merchantReferenceId, FspCode, Amount, PaymentDesc]
+    );
+
+    // Mark bill as paid
+    await db.execute(
+      `UPDATE bills SET status = 'paid', updated_at = NOW() WHERE id = ?`,
+      [bill.id]
+    );
+
+    const response = {
+      MerchantReferenceId: merchantReferenceId,
+      Status:              'Success',
+      StatusCode:          0,
+      Message:             'Payment successful.',
+    };
+
+    await logRequest('/api/merchant/payment', req.claims.userId, BillIdentifier, req.body, response, 200);
+    return res.status(200).json(response);
+
+  } catch (err) {
+    console.error('[Payment Error]', err.message);
+    const response = { Status: 'Failed', StatusCode: 1, Message: 'Internal server error' };
+    await logRequest('/api/merchant/payment', req.claims.userId, BillIdentifier, req.body, response, 500);
+    return res.status(500).json(response);
+  }
 });
 
 // ── 404 Handler (prevents HTML error pages) ───────────────────────────────────
@@ -142,5 +228,5 @@ app.use((err, req, res, next) => {
 
 // ── Start Server ──────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server running on https://bill-pay-api-stats-life.onrender.com:${PORT}`);
 });

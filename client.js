@@ -1,7 +1,8 @@
 const crypto = require('crypto');
 
 const SECRET_KEY = 'deos_CsIeYePAIbiaknmhlCBSOkDAgIk8-Tst4HeJDhOLYU44eyekWT5X-rNBAhz';
-const API_BASE_URL = 'http://localhost:3000';
+const API_BASE_URL = 'https://bill-pay-api-stats-life.onrender.com';
+
 
 // ── Hash Generator ────────────────────────────────────────────────────────────
 function generateHash(data, secretKey) {
