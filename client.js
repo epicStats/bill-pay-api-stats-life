@@ -66,7 +66,7 @@ async function nameLookup(billIdentifier) {
     Language: "sw",
     Country: "TZ",
     TimeStamp: new Date().toISOString(),
-    BillType: "123456789"
+    BillType: "255714641171"
   };
   return apiRequest('/api/merchant/name-lookup', data);
 }
@@ -82,21 +82,21 @@ async function processPayment({ fspReferenceId, pgReferenceId, amount, billIdent
     FspCode: fspCode,
     Country: "TZ",
     TimeStamp: new Date().toISOString(),
-    BillType: "123456789",
+    BillType: "Electricity",
   };
   return apiRequest('/api/merchant/payment', data);
 }
 
 // ── Run ───────────────────────────────────────────────────────────────────────
 (async () => {
-  await nameLookup('123456789');
+  await nameLookup('255714641171');
 
   // ✅ camelCase keys to match the function's destructuring
   await processPayment({
     fspReferenceId: 'fsp123456',
     pgReferenceId:  'pg123456',
-    amount:         1000,
-    billIdentifier: '123456789',
+    amount:         20000.00,
+    billIdentifier: '255714641171',
     fspCode:        'FSP123',
   });
 })();

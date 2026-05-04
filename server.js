@@ -17,6 +17,9 @@ const db = mysql.createPool({
   database: 'railway',  
   waitForConnections: true,
   connectionLimit:    10,
+  ssl: {
+    rejectUnauthorized: false  // ← Required for Railway MySQL
+  }
 });
 
 // ── Hash Generator ────────────────────────────────────────────────────────────
