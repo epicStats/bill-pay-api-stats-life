@@ -3,15 +3,15 @@ const express = require('express');
 const mysql = require('mysql2');
 
 const app       = express();
-const PORT      = 3000;
+const PORT      = process.env.PORT || 3000;
 const SECRET_KEY = 'deos_CsIeYePAIbiaknmhlCBSOkDAgIk8-Tst4HeJDhOLYU44eyekWT5X-rNBAhz';
 
 app.use(express.json());
 
 // ── DB Connection ─────────────────────────────────────────────────────────────
 const db = mysql.createPool({
-  host:     'mysql.railway.internalT',      
-  port:      3306,       
+  host:     'nozomi.proxy.rlwy.net',      
+  port:      35069,       
   user:     'root',      
   password: 'IxZsgjlZdisXUCYSQkDMrzGWdQxFHqGr',  
   database: 'railway',  
