@@ -58,7 +58,7 @@ function verifyJWT(token, secretKey) {
 function authenticate(req, res, next) {
   const authHeader = req.headers['authorization'] || '';
   console.log('[Auth Header]', authHeader);
-  const token      = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  const token = authHeader.toLowerCase().startsWith('bearer ') ? authHeader.slice(7) : null;
 
   if (!token) {
     return res.status(401).json({
