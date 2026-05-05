@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const crypto  = require('crypto');
 const express = require('express');
 const mysql = require('mysql2/promise');
@@ -10,16 +12,14 @@ app.use(express.json());
 
 // ── DB Connection ─────────────────────────────────────────────────────────────
 const db = mysql.createPool({
-  host:     'nozomi.proxy.rlwy.net',      
-  port:      35069,       
-  user:     'root',      
-  password: 'IxZsgjlZdisXUCYSQkDMrzGWdQxFHqGr',  
-  database: 'railway',  
+  host:     process.env.DB_HOST,
+  port:      process.env.DB_PORT,
+  user:     process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
   waitForConnections: true,
   connectionLimit:    10,
-  ssl: {
-    rejectUnauthorized: false  // ← Required for Railway MySQL
-  }
+  ssl: { rejectUnauthorized: false }
 });
 
 // ── Hash Generator ────────────────────────────────────────────────────────────
