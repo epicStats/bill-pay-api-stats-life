@@ -6,7 +6,7 @@ const mysql = require('mysql2/promise');
 
 const app       = express();
 const PORT      = process.env.PORT || 3000;
-const SECRET_KEY = 'deos_CsIeYePAIbiaknmhlCBSOkDAgIk8-Tst4HeJDhOLYU44eyekWT5X-rNBAhz';
+const SECRET_KEY = process.env.SECRET_KEY;
 
 app.use(express.json());
 
