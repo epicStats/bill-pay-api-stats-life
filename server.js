@@ -22,6 +22,14 @@ const db = mysql.createPool({
   ssl: { rejectUnauthorized: false }
 });
 
+console.log('[DB Config]', {
+  host:     process.env.DB_HOST,
+  port:     process.env.DB_PORT,
+  user:     process.env.DB_USER,
+  password: process.env.DB_PASSWORD ? '***set***' : 'NOT SET',
+  database: process.env.DB_NAME,
+});
+
 // ── Hash Generator ────────────────────────────────────────────────────────────
 function generateHash(data, secretKey) {
   const json        = JSON.stringify(data);
