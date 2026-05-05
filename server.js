@@ -57,6 +57,7 @@ function verifyJWT(token, secretKey) {
 // ── Auth Middleware ───────────────────────────────────────────────────────────
 function authenticate(req, res, next) {
   const authHeader = req.headers['authorization'] || '';
+  console.log('[Auth Header]', authHeader);
   const token      = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
   if (!token) {
